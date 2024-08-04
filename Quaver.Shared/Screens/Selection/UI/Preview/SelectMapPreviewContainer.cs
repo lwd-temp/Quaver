@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
+using Force.DeepCloner;
 using Microsoft.Xna.Framework;
 using Quaver.API.Enums;
 using Quaver.API.Maps;
@@ -76,7 +77,7 @@ namespace Quaver.Shared.Screens.Selection.UI.Preview
         /// <summary>
         ///     The custom audio track for this container
         /// </summary>
-        private IAudioTrack Track { get; }
+        private IAudioTrack Track { get; set; }
 
         /// <summary>
         ///     The Qua that'll be used if one is passed in through the constructor
@@ -135,7 +136,6 @@ namespace Quaver.Shared.Screens.Selection.UI.Preview
         {
             UpdateGameplayScreen(gameTime);
 
-            TrackInPreviousFrame = Track ?? AudioEngine.Track;
             base.Update(gameTime);
         }
 
@@ -200,7 +200,7 @@ namespace Quaver.Shared.Screens.Selection.UI.Preview
                 var qua = Qua ?? map.LoadQua();
 
                 if (qua == Qua)
-                    qua = ObjectHelper.DeepClone(qua);
+                    qua = qua.DeepClone();
 
                 map.Qua = qua;
                 map.Qua.ApplyMods(ModManager.Mods);
@@ -285,17 +285,17 @@ namespace Quaver.Shared.Screens.Selection.UI.Preview
                             for (var i = 0; i < playfield.Stage.JudgementHitBursts.Count; i++)
                                 playfield.Stage.JudgementHitBursts[i].OriginalPosY *= previewMultiplier;
 
-                        if (playfield.Stage.OriginalComboDisplayY < 0)
-                            playfield.Stage.OriginalComboDisplayY *= previewMultiplier;
+                        if (playfield.Stage.ComboDisplay.OriginalPosY < 0)
+                            playfield.Stage.ComboDisplay.OriginalPosY *= previewMultiplier;
 
-                        playfield.Stage.ComboDisplay.Y = playfield.Stage.OriginalComboDisplayY;
+                        playfield.Stage.ComboDisplay.Y = playfield.Stage.ComboDisplay.OriginalPosY;
                         break;
                     case ScrollDirection.Up:
                         playfield.Container.Alignment = Alignment.TopLeft;
                         playfield.Stage.HitError.Y -= filterPanelHeight + MenuBorder.HEIGHT;
                         for (var i = 0; i < playfield.Stage.JudgementHitBursts.Count; i++)
                             playfield.Stage.JudgementHitBursts[i].OriginalPosY -= filterPanelHeight + MenuBorder.HEIGHT;
-                        playfield.Stage.OriginalComboDisplayY -= filterPanelHeight + MenuBorder.HEIGHT;
+                        playfield.Stage.ComboDisplay.OriginalPosY -= filterPanelHeight + MenuBorder.HEIGHT;
 
                         if (playfield.Stage.HitError.Y < 0)
                             playfield.Stage.HitError.Y *= previewMultiplier;
@@ -304,10 +304,10 @@ namespace Quaver.Shared.Screens.Selection.UI.Preview
                             for (var i = 0; i < playfield.Stage.JudgementHitBursts.Count; i++)
                                 playfield.Stage.JudgementHitBursts[i].OriginalPosY *= previewMultiplier;
 
-                        if (playfield.Stage.OriginalComboDisplayY < 0)
-                            playfield.Stage.OriginalComboDisplayY *= previewMultiplier;
+                        if (playfield.Stage.ComboDisplay.OriginalPosY < 0)
+                            playfield.Stage.ComboDisplay.OriginalPosY *= previewMultiplier;
 
-                        playfield.Stage.ComboDisplay.Y = playfield.Stage.OriginalComboDisplayY;
+                        playfield.Stage.ComboDisplay.Y = playfield.Stage.ComboDisplay.OriginalPosY;
                         break;
                     default:
                         throw new ArgumentOutOfRangeException();
@@ -357,6 +357,9 @@ namespace Quaver.Shared.Screens.Selection.UI.Preview
                     if (SeekBar != null)
                         SeekBar.Track = AudioEngine.Track;
 
+                    Track = AudioEngine.Track;
+                    TrackInPreviousFrame = Track;
+                    
                     LoadedGameplayScreen?.HandleReplaySeeking();
                 }
 

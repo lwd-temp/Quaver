@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework;
 using Quaver.API.Enums;
 using Quaver.API.Maps;
 using Quaver.Shared.Assets;
+using Quaver.Shared.Config;
 using Quaver.Shared.Graphics.Backgrounds;
 using Quaver.Shared.Graphics.Graphs;
 using Quaver.Shared.Graphics.Menu.Border;
@@ -91,12 +92,25 @@ namespace Quaver.Shared.Screens.Edit
         /// </summary>
         public bool IsImGuiHovered { get; private set; }
 
+        /// <summary>
+        ///     Maximum allowed custom FPS in editor
+        /// </summary>
+        private const int MaximumCustomFps = 500;
+
         /// <inheritdoc />
         /// <summary>
         /// </summary>
         /// <param name="screen"></param>
         public EditScreenView(Screen screen) : base(screen)
         {
+            if (ConfigManager.FpsLimiterType.Value == FpsLimitType.Custom &&
+                ConfigManager.CustomFpsLimit.Value > MaximumCustomFps)
+            {
+                Container.ScheduleUpdate(() =>
+                    ((QuaverGame)GameBase.Game).SetFps(FpsLimitType.Unlimited, MaximumCustomFps)
+                );
+            }
+
             CreateBackground();
             CreatePlayfield();
             CreateFooter();
@@ -159,6 +173,9 @@ namespace Quaver.Shared.Screens.Edit
         /// </summary>
         public override void Destroy()
         {
+            if (ConfigManager.FpsLimiterType.Value == FpsLimitType.Custom)
+                ((QuaverGame)GameBase.Game).SetFps(FpsLimitType.Custom, ConfigManager.CustomFpsLimit.Value);
+
             Container?.Destroy();
 
             // ReSharper disable twice DelegateSubtraction
@@ -188,7 +205,7 @@ namespace Quaver.Shared.Screens.Edit
             EditScreen.Track, EditScreen.BeatSnap, EditScreen.PlayfieldScrollSpeed, EditScreen.AnchorHitObjectsAtMidpoint,
             EditScreen.ScaleScrollSpeedWithRate, EditScreen.BeatSnapColor, EditScreen.ViewLayers, EditScreen.CompositionTool,
             EditScreen.LongNoteOpacity, EditScreen.SelectedHitObjects, EditScreen.SelectedLayer, EditScreen.DefaultLayer,
-            EditScreen.PlaceObjectsOnNearestTick, EditScreen.ShowWaveform, EditScreen.AudioDirection, EditScreen.WaveformFilter) { Parent = Container};
+            EditScreen.PlaceObjectsOnNearestTick, EditScreen.ShowWaveform, EditScreen.ShowSpectrogram, EditScreen.AudioDirection, EditScreen.WaveformFilter, EditScreen.SpectrogramFftSize) { Parent = Container};
 
         /// <summary>
         /// </summary>
@@ -258,7 +275,7 @@ namespace Quaver.Shared.Screens.Edit
                 EditScreen.AnchorHitObjectsAtMidpoint, EditScreen.ScaleScrollSpeedWithRate,
                 EditScreen.BeatSnapColor, EditScreen.ViewLayers, EditScreen.CompositionTool, EditScreen.LongNoteOpacity,
                 EditScreen.SelectedHitObjects, EditScreen.SelectedLayer, EditScreen.DefaultLayer, EditScreen.PlaceObjectsOnNearestTick,
-                EditScreen.ShowWaveform, EditScreen.AudioDirection, EditScreen.WaveformFilter, true)
+                EditScreen.ShowWaveform, EditScreen.ShowSpectrogram, EditScreen.AudioDirection, EditScreen.WaveformFilter, EditScreen.SpectrogramFftSize, true)
             {
                 Parent = Container,
                 Alignment = Alignment.TopCenter

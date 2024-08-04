@@ -10,6 +10,7 @@ using Quaver.API.Maps.Processors.Difficulty.Rulesets.Keys;
 using Quaver.API.Maps.Processors.Difficulty.Rulesets.Keys.Structures;
 using Quaver.Shared.Assets;
 using Quaver.Shared.Audio;
+using Quaver.Shared.Config;
 using Quaver.Shared.Helpers;
 using Quaver.Shared.Screens;
 using Wobble;
@@ -74,6 +75,17 @@ namespace Quaver.Shared.Graphics.Graphs
         /// </summary>
         protected List<Sprite> Bars { get; set; }
 
+        /// <summary>
+        ///     When the timer reaches <see cref="RecreateBarsTimeout"/>, <see cref="CreateBars"/> will be called.
+        ///     (Debouncing)
+        /// </summary>
+        private TimeSpan recreateBarsTimer = TimeSpan.MaxValue;
+
+        /// <summary>
+        ///     The duration that needs to be passed before <see cref="CreateBars"/> is called.
+        /// </summary>
+        private static readonly TimeSpan RecreateBarsTimeout = TimeSpan.FromMilliseconds(200);
+
         /// <inheritdoc />
         /// <summary>
         /// </summary>
@@ -125,14 +137,24 @@ namespace Quaver.Shared.Graphics.Graphs
                     (game?.CurrentScreen?.Type == QuaverScreenType.Select ||
                      game?.CurrentScreen?.Type == QuaverScreenType.Multiplayer))
             {
-                if (MouseManager.CurrentState.ScrollWheelValue < MouseManager.PreviousState.ScrollWheelValue)
+                if (MouseManager.IsScrollingUp(ConfigManager.InvertEditorScrolling.Value))
                     SeekInDirection(Direction.Forward);
-                else if (MouseManager.CurrentState.ScrollWheelValue > MouseManager.PreviousState.ScrollWheelValue)
+                else if (MouseManager.IsScrollingDown(ConfigManager.InvertEditorScrolling.Value))
                     SeekInDirection(Direction.Backward);
             }
 
             if (SeekBarLine != null)
                 SeekBarLine.Y = Height - (float) (Track.Time  / Track.Length) * Height;
+
+            if (recreateBarsTimer != TimeSpan.MaxValue)
+            {
+                recreateBarsTimer += gameTime.ElapsedGameTime;
+                if (recreateBarsTimer > RecreateBarsTimeout)
+                {
+                    AddScheduledUpdate(CreateBars);
+                    recreateBarsTimer = TimeSpan.MaxValue;
+                }
+            }
 
             base.Update(gameTime);
         }
@@ -144,6 +166,14 @@ namespace Quaver.Shared.Graphics.Graphs
         {
             AudioSeeked = null;
             base.Destroy();
+        }
+
+        /// <summary>
+        ///     Resets the timer to 0 so <see cref="CreateBars"/> will start debouncing
+        /// </summary>
+        protected void ScheduleCreateBars()
+        {
+            recreateBarsTimer = TimeSpan.Zero;
         }
 
         /// <summary>

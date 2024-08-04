@@ -35,8 +35,10 @@ using Quaver.Shared.Screens.Gameplay.UI.Multiplayer;
 using Quaver.Shared.Screens.Gameplay.UI.Offset;
 using Quaver.Shared.Screens.Gameplay.UI.Replays;
 using Quaver.Shared.Screens.Gameplay.UI.Scoreboard;
+using Quaver.Shared.Screens.Multi;
 using Quaver.Shared.Screens.Results;
 using Quaver.Shared.Screens.Selection;
+using Quaver.Shared.Screens.Tournament;
 using Quaver.Shared.Screens.Tournament.Gameplay;
 using Quaver.Shared.Skinning;
 using Steamworks;
@@ -206,7 +208,9 @@ namespace Quaver.Shared.Screens.Gameplay
         public GameplayScreenView(Screen screen) : base(screen)
         {
             Screen = (GameplayScreen)screen;
-            RatingProcessor = new RatingProcessorKeys(Screen.Map.SolveDifficulty(ModManager.Mods, true).OverallDifficulty);
+            RatingProcessor = new RatingProcessorKeys(Screen.Map.SolveDifficulty(
+                screen is TournamentGameplayScreen ? Screen.Ruleset.ScoreProcessor.Mods : ModManager.Mods,
+                true).OverallDifficulty);
 
             CreateBackground();
 
@@ -456,8 +460,7 @@ namespace Quaver.Shared.Screens.Gameplay
             ScoreDisplay.UpdateValue(Screen.Ruleset.ScoreProcessor.Score);
 
             RatingDisplay.UpdateValue(RatingProcessor.CalculateRating(Screen.Ruleset.StandardizedReplayPlayer.ScoreProcessor.Accuracy));
-
-            if (ConfigManager.DisplayRankedAccuracy.Value)
+            if (ConfigManager.DisplayRankedAccuracy.Value || Screen.IsSpectatingTournament)
                 AccuracyDisplay.UpdateValue(Screen.Ruleset.StandardizedReplayPlayer.ScoreProcessor.Accuracy);
             else
                 AccuracyDisplay.UpdateValue(Screen.Ruleset.ScoreProcessor.Accuracy);
@@ -733,14 +736,9 @@ namespace Quaver.Shared.Screens.Gameplay
                 // Force all replay frames on failure
                 if (OnlineManager.IsBeingSpectated)
                 {
-                    Screen.SendReplayFramesToServer(true);
-
-                    // Send final replay frame to let spectators know the song is complete
-                    if (OnlineManager.IsBeingSpectated)
-                    {
-                        OnlineManager.Client?.SendReplaySpectatorFrames(SpectatorClientStatus.FinishedSong, int.MaxValue,
-                            new List<ReplayFrame>());
-                    }
+                    // Send replay frames
+                    // FinishedSong frame as well unless we are the spectator
+                    Screen.SendReplayFramesToServer(true, !OnlineManager.IsSpectatingSomeone);
                 }
 
                 if (Screen.IsPlayTesting)
@@ -882,7 +880,12 @@ namespace Quaver.Shared.Screens.Gameplay
                                                       && (Screen.Timing.Time >= Screen.Map.Length || AudioEngine.Track.Time >= AudioEngine.Track.Length);
 
             if (Screen is TournamentGameplayScreen)
+            {
+                // Only exit once (multiple GameplayScreenViews), and force end (!mp end or lobby disbanded)
+                if (!Screen.Exiting && e.Force)
+                    Screen.Exit(() => new MultiplayerGameScreen());
                 return;
+            }
 
             Screen.IsPaused = true;
 
